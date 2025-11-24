@@ -22,12 +22,28 @@ export default function VideoTranscription() {
     if (!videoFile) return
     setIsTranscribing(true)
     // Simulate transcription
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setTranscript(
-      "This is a sample transcription of your video content. It demonstrates how the transcription feature works with multiple paragraphs and proper formatting. You can edit this text directly and save it in various formats.",
-    )
-    setIsTranscribing(false)
-  }
+    const formData = new FormData();
+    formData.append("video_file",videoFile);
+    formData.append("lang",targetLanguage);
+    try{
+      const response = await fetch("http://127.0.0.1:8000/modules/video_transcribe/",{
+        method:"POST",
+      body :formData,
+    });
+    if (!response.ok){
+      throw new Error("transription failed");
+    }
+    const data = await response.json();
+    setTranscript(data.transcript);
+    }
+    catch(error){
+      console.error(error);
+      setTranscript("Error :failed to transcribe");
+      
+    }
+    setIsTranscribing(false);
+   
+  };
 
   const downloadTranscript = (format: "txt" | "docx") => {
     const element = document.createElement("a")
