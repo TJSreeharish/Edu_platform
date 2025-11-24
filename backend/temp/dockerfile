@@ -1,0 +1,25 @@
+# Base image - USE DEVEL instead of RUNTIME
+FROM pytorch/pytorch:2.8.0-cuda12.9-cudnn9-devel
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libsndfile1 \
+    ffmpeg \
+    git \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir Cython packaging \
+ && pip install --no-cache-dir "git+https://github.com/NVIDIA/NeMo.git@main#egg=nemo_toolkit[asr]" \
+ && pip install --no-cache-dir whisperx \
+ && pip install --no-cache-dir uvicorn fastapi python-multipart \
+ && pip install --no-cache-dir megatron-core
+
+# Set working directory
+WORKDIR /home/1001/whisper_data
+
+# Expose port
+EXPOSE 8000
+
