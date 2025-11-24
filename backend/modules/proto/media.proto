@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package media;
+
+service MediaService {
+  rpc ExtractAudio(VideoRequest) returns (AudioResponse);
+}
+
+message VideoRequest {
+  bytes video_data = 1;
+}
+
+message AudioResponse {
+  bytes audio_data = 1;
+}
