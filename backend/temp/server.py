@@ -1,30 +1,49 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File,Form
 import uvicorn
 import os
 import torch
 import shutil
-
 import os
 import sys
 
-# Fix cuDNN library path BEFORE importing torch/NeMo
-os.environ['LD_LIBRARY_PATH'] = '/opt/conda/lib/python3.11/site-packages/nvidia/cudnn/lib:/opt/conda/lib/python3.11/site-packages/torch/lib:' + os.environ.get('LD_LIBRARY_PATH', '')
+import os
+import sys
+import warnings
 
-# Also add to system path for dynamic loading
-cudnn_lib_path = '/opt/conda/lib/python3.11/site-packages/nvidia/cudnn/lib'
-if os.path.exists(cudnn_lib_path):
-    # Add to LD_LIBRARY_PATH
-    current_ld_path = os.environ.get('LD_LIBRARY_PATH', '')
-    if cudnn_lib_path not in current_ld_path:
-        os.environ['LD_LIBRARY_PATH'] = f"{cudnn_lib_path}:{current_ld_path}"
+# Suppress warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+
+# ============================================================================
+# CRITICAL: Fix cuDNN library path FIRST
+# ============================================================================
+cudnn_paths = [
+    '/opt/conda/lib/python3.11/site-packages/nvidia/cudnn/lib',
+    '/opt/conda/lib/python3.11/site-packages/ctranslate2.libs',  # Add this!
+    '/opt/conda/lib/python3.11/site-packages/torch/lib'
+]
+
+current_ld_path = os.environ.get('LD_LIBRARY_PATH', '')
+os.environ['LD_LIBRARY_PATH'] = ':'.join(cudnn_paths) + ':' + current_ld_path
+
+# Preload libraries
+import ctypes
+try:
+    # Try to load cuDNN 9 libraries
+    cudnn_lib_path = '/opt/conda/lib/python3.11/site-packages/nvidia/cudnn/lib'
+    libs_to_preload = [
+        'libcudnn_ops.so.9',
+        'libcudnn_cnn.so.9',
+        'libcudnn_adv.so.9',
+    ]
     
-    # Try to preload the library
-    try:
-        import ctypes
-        ctypes.CDLL(os.path.join(cudnn_lib_path, 'libcudnn_cnn.so.9'))
-        print("✓ cuDNN library preloaded successfully")
-    except Exception as e:
-        print(f"⚠ Warning: Could not preload cuDNN: {e}")
+    for lib in libs_to_preload:
+        lib_path = os.path.join(cudnn_lib_path, lib)
+        if os.path.exists(lib_path):
+            ctypes.CDLL(lib_path, mode=ctypes.RTLD_GLOBAL)
+    
+    print("✓ cuDNN library preloaded successfully")
+except Exception as e:
+    print(f"⚠ Warning: Could not preload cuDNN: {e}")
 
 import torch, gc
 app = FastAPI()
@@ -115,7 +134,7 @@ def assign_word_speakers(words, diar_segments):
     return merged
 
 
-def run(audio_file, output_srt, output_json, device="cuda", compute_type="int8"):
+def run(audio_file, output_srt, output_json, device="cuda", compute_type="int8",lang_code=None):
     start_time = time.time()
     timings = {}
 
@@ -134,7 +153,7 @@ def run(audio_file, output_srt, output_json, device="cuda", compute_type="int8")
     audio = step("Audio Load", whisperx.load_audio, audio_file)
 
     # 3. Transcribe
-    result = step("Transcription", model.transcribe, audio, 16)
+    result = step("Transcription", model.transcribe, audio, 16,language = lang_code)
     segments, lang_code = result["segments"], result["language"]
     del model; gc.collect()
     print(100*"=")
@@ -226,17 +245,19 @@ def run(audio_file, output_srt, output_json, device="cuda", compute_type="int8")
         print(f" - {step_name:<25}: {sec:.2f}s")
 
 from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
 import torch
 import shutil
 import tempfile
 import os
+import uuid
 import json
 # from main import run
 
 app = FastAPI()
 
 @app.post("/process_audio/")
-async def process_audio(file: UploadFile = File(...)):
+async def process_audio(file: UploadFile = File(...),language: str = Form(None)):
     try:
         # Create a temporary working directory
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -247,17 +268,21 @@ async def process_audio(file: UploadFile = File(...)):
             # Output paths (temporary)
             output_srt = os.path.join(tmpdir, "output.srt")
             output_json = os.path.join(tmpdir, "output.json")
-
+           
+            print("langauge used :" ,language)
+            if language == 'auto':
+                language = None
             # Run WhisperX + Sortformer
             run(
                 audio_file=input_path,
                 output_srt=output_srt,
                 output_json=output_json,
                 device="cuda" if torch.cuda.is_available() else "cpu",
-                compute_type="int8"
+                compute_type="int8",
+                lang_code=language
             )
-
-            # Read results
+            print("langauge used :" ,language)
+            # Read results0
             with open(output_srt, "r", encoding="utf-8") as f:
                 srt_data = f.read()
 
@@ -274,7 +299,6 @@ async def process_audio(file: UploadFile = File(...)):
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
 
 
 

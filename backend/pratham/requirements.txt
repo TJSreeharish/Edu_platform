@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sentencepiece
+python-docx
+langdetect
+pymupdf
+requests
+python-multipart

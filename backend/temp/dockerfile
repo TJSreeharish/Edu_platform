@@ -1,4 +1,4 @@
-# Base image - USE DEVEL instead of RUNTIME
+# Base image
 FROM pytorch/pytorch:2.8.0-cuda12.9-cudnn9-devel
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -10,16 +10,57 @@ RUN apt-get update && apt-get install -y \
     git \
  && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-RUN pip install --no-cache-dir Cython packaging \
- && pip install --no-cache-dir "git+https://github.com/NVIDIA/NeMo.git@main#egg=nemo_toolkit[asr]" \
- && pip install --no-cache-dir whisperx \
- && pip install --no-cache-dir uvicorn fastapi python-multipart \
- && pip install --no-cache-dir megatron-core
+# Install base dependencies first
+RUN pip install --no-cache-dir \
+    Cython \
+    packaging \
+    uvicorn \
+    fastapi \
+    python-multipart
 
-# Set working directory
-WORKDIR /home/1001/whisper_data
 
-# Expose port
-EXPOSE 8000
+# Install ctranslate2 >= 4.5.0 BEFORE whisperx (critical for cuDNN 9 support)
+RUN pip install --no-cache-dir "ctranslate2>=4.5.0"
 
+# Install NeMo toolkit (with --no-deps to prevent protobuf upgrade)
+RUN pip install --no-cache-dir "git+https://github.com/NVIDIA/NeMo.git@main#egg=nemo_toolkit[asr]"
+
+# Install megatron-core
+RUN pip install --no-cache-dir megatron-core
+
+# Install whisperx (will use the ctranslate2>=4.5.0 we installed)
+RUN pip install --no-cache-dir whisperx
+
+# Verify protobuf version before generating
+RUN python -c "import google.protobuf; print('Protobuf version:', google.protobuf.__version__)"
+
+# Create working directory
+WORKDIR /app
+
+COPY grpc_server.py .
+COPY server.py .
+COPY proto/media.proto proto/
+RUN pip install  grpcio
+RUN pip install  grpcio-tools 
+RUN pip install "protobuf==6.33.1"
+# Generate gRPC Python files with protobuf 5.29.5
+RUN python -m grpc_tools.protoc \
+    -I=proto \
+    --python_out=. \
+    --grpc_python_out=. \
+    proto/media.proto
+
+
+
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+python grpc_server.py &\n\
+python server.py\n' > start.sh && chmod +x start.sh
+
+# Expose ports
+EXPOSE 8003
+EXPOSE 8004
+
+# Run both servers
+CMD ["bash", "start.sh"]

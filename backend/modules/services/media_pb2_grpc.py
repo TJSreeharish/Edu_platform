@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import media_pb2 as media__pb2
+import modules.services.media_pb2 as media__pb2
 
 GRPC_GENERATED_VERSION = '1.76.0'
 GRPC_VERSION = grpc.__version__
@@ -39,12 +39,23 @@ class MediaServiceStub(object):
                 request_serializer=media__pb2.VideoRequest.SerializeToString,
                 response_deserializer=media__pb2.AudioResponse.FromString,
                 _registered_method=True)
+        self.HealthCheck = channel.unary_unary(
+                '/media.MediaService/HealthCheck',
+                request_serializer=media__pb2.Empty.SerializeToString,
+                response_deserializer=media__pb2.HealthStatus.FromString,
+                _registered_method=True)
 
 
 class MediaServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def ExtractAudio(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def HealthCheck(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -57,6 +68,11 @@ def add_MediaServiceServicer_to_server(servicer, server):
                     servicer.ExtractAudio,
                     request_deserializer=media__pb2.VideoRequest.FromString,
                     response_serializer=media__pb2.AudioResponse.SerializeToString,
+            ),
+            'HealthCheck': grpc.unary_unary_rpc_method_handler(
+                    servicer.HealthCheck,
+                    request_deserializer=media__pb2.Empty.FromString,
+                    response_serializer=media__pb2.HealthStatus.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -86,6 +102,33 @@ class MediaService(object):
             '/media.MediaService/ExtractAudio',
             media__pb2.VideoRequest.SerializeToString,
             media__pb2.AudioResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def HealthCheck(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/media.MediaService/HealthCheck',
+            media__pb2.Empty.SerializeToString,
+            media__pb2.HealthStatus.FromString,
             options,
             channel_credentials,
             insecure,

@@ -24,17 +24,21 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bmedia.proto\x12\x05media\"\"\n\x0cVideoRequest\x12\x12\n\nvideo_data\x18\x01 \x01(\x0c\"#\n\rAudioResponse\x12\x12\n\naudio_data\x18\x01 \x01(\x0c\x32I\n\x0cMediaService\x12\x39\n\x0c\x45xtractAudio\x12\x13.media.VideoRequest\x1a\x14.media.AudioResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bmedia.proto\x12\x05media\"\x07\n\x05\x45mpty\"\"\n\x0cVideoRequest\x12\x12\n\nvideo_data\x18\x01 \x01(\x0c\"#\n\rAudioResponse\x12\x12\n\naudio_data\x18\x01 \x01(\x0c\"\x1e\n\x0cHealthStatus\x12\x0e\n\x06status\x18\x01 \x01(\t2{\n\x0cMediaService\x12\x39\n\x0c\x45xtractAudio\x12\x13.media.VideoRequest\x1a\x14.media.AudioResponse\x12\x30\n\x0bHealthCheck\x12\x0c.media.Empty\x1a\x13.media.HealthStatusb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'media_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_VIDEOREQUEST']._serialized_start=22
-  _globals['_VIDEOREQUEST']._serialized_end=56
-  _globals['_AUDIORESPONSE']._serialized_start=58
-  _globals['_AUDIORESPONSE']._serialized_end=93
-  _globals['_MEDIASERVICE']._serialized_start=95
-  _globals['_MEDIASERVICE']._serialized_end=168
+  _globals['_EMPTY']._serialized_start=22
+  _globals['_EMPTY']._serialized_end=29
+  _globals['_VIDEOREQUEST']._serialized_start=31
+  _globals['_VIDEOREQUEST']._serialized_end=65
+  _globals['_AUDIORESPONSE']._serialized_start=67
+  _globals['_AUDIORESPONSE']._serialized_end=102
+  _globals['_HEALTHSTATUS']._serialized_start=104
+  _globals['_HEALTHSTATUS']._serialized_end=134
+  _globals['_MEDIASERVICE']._serialized_start=136
+  _globals['_MEDIASERVICE']._serialized_end=259
 # @@protoc_insertion_point(module_scope)

@@ -1,0 +1,35 @@
+FROM pytorch/pytorch:2.8.0-cuda12.9-cudnn9-devel
+
+# Avoid interactive prompts during install
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libglib2.0-0 \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install required Python packages
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    sentencepiece \
+    python-docx \
+    langdetect \
+    pymupdf \
+    requests \
+    python-multipart \
+    transformers \
+    accelerate \
+    torch
+
+# Copy server file
+COPY server.py /server.py
+
+# Expose FastAPI port
+EXPOSE 8903
+
+# Run FastAPI server
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8903"]
