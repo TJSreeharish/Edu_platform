@@ -134,7 +134,7 @@ def assign_word_speakers(words, diar_segments):
     return merged
 
 
-def run(audio_file, output_srt, output_json, device="cuda", compute_type="int8",lang_code=None):
+def run(audio_file, output_srt, output_json, transcript_path ,device="cuda", compute_type="int8",lang_code=None):
     start_time = time.time()
     timings = {}
 
@@ -168,7 +168,17 @@ def run(audio_file, output_srt, output_json, device="cuda", compute_type="int8",
     except Exception as e:
         print(f"Alignment skipped or failed: {e}")
         print("Continuing with original segments...")
+        align_model, metadata = step("Align Model Load", whisperx.load_align_model, "ml", device)
+        result = step("Alignment", whisperx.align, segments, align_model, metadata, audio, device)
+        segments = result["segments"]
+        del align_model; gc.collect()
         # segments remains unchanged from transcription
+    print(100*"&")
+    trans = " ".join([s["text"] for s in segments])
+    print(trans)
+    with open(transcript_path, "w", encoding="utf-8") as f:
+                f.write(trans)
+    print(100*"&*")
 
     # 5. Run Sortformer diarization
     processed_audio = ensure_mono_16k(audio_file)
@@ -243,6 +253,7 @@ def run(audio_file, output_srt, output_json, device="cuda", compute_type="int8",
     print("⏱️ TIME BREAKDOWN:")
     for step_name, sec in timings.items():
         print(f" - {step_name:<25}: {sec:.2f}s")
+    return lang_code
 
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -257,7 +268,7 @@ import json
 app = FastAPI()
 
 @app.post("/process_audio/")
-async def process_audio(file: UploadFile = File(...),language: str = Form(None)):
+async def process_audio(file: UploadFile = File(...),source_lan: str = Form(None)):
     try:
         # Create a temporary working directory
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -268,33 +279,40 @@ async def process_audio(file: UploadFile = File(...),language: str = Form(None))
             # Output paths (temporary)
             output_srt = os.path.join(tmpdir, "output.srt")
             output_json = os.path.join(tmpdir, "output.json")
+            transcript =  os.path.join(tmpdir, "transcript.txt")
            
-            print("langauge used :" ,language)
-            if language == 'auto':
-                language = None
+            print("langauge used :" ,source_lan)
+            if source_lan == 'auto':
+                source_lan = None
             # Run WhisperX + Sortformer
-            run(
+            detect_lan = run(
                 audio_file=input_path,
                 output_srt=output_srt,
                 output_json=output_json,
+                transcript_path = transcript,
                 device="cuda" if torch.cuda.is_available() else "cpu",
                 compute_type="int8",
-                lang_code=language
+                lang_code = source_lan
+              
             )
-            print("langauge used :" ,language)
+            print("langauge used :" ,source_lan)
             # Read results0
             with open(output_srt, "r", encoding="utf-8") as f:
                 srt_data = f.read()
 
             with open(output_json, "r", encoding="utf-8") as f:
                 json_data = json.load(f)
+            with open(transcript, "r", encoding="utf-8") as f:
+                 trans = f.read()
 
         # Return both files’ content
         return {
             "status": "success",
             "message": "Processing complete",
             "srt_content": srt_data,
-            "json_content": json_data
+            "json_content": json_data,
+            "only_transcript": trans,
+            "source_lan" : detect_lan
         }
 
     except Exception as e:

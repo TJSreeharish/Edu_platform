@@ -11,14 +11,15 @@ def index(request):
     return JsonResponse({"message": "success"})
 
 @csrf_exempt
-def extract_audio(request):
+def video_transcribe(request):
     print("reached here")
     
     if request.method != "POST":
         return JsonResponse({"error": "send in POST method"}, status=400)
     
     video = request.FILES.get("video_file")
-    lang = request.POST.get("lang", "auto")  # Default to "auto" if not provided
+    source_lan = request.POST.get("source_lan", "auto")  # Default to "auto" if not provided
+
     
     if not video:
         return JsonResponse({"error": "video not received"}, status=400)
@@ -44,7 +45,7 @@ def extract_audio(request):
             "file": ("audio.wav", audio, "audio/wav")
         }
         data = {
-            "language": lang
+            "source_lan": source_lan
         }
         
 
@@ -66,7 +67,8 @@ def extract_audio(request):
             "status": "success",
             "transcript": result.get("srt_content", ""),
             "json_data": result.get("json_content", {}),
-            "message": result.get("message", "Processing complete")
+            "message": result.get("message", "Processing complete"),
+            "only_transcript" : result.get("only_transcript",""),
         })
         
     except requests.exceptions.ConnectionError as e:

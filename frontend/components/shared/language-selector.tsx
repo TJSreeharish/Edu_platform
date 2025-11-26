@@ -18,6 +18,7 @@ const languages = [
   { value: "kn", label: "Kannada" },
   { value: "ml", label: "Malayalam" },
   { value: "bn", label: "Bengali" },
+  { value: "auto", label: "auto"},
 ]
 
 interface LanguageSelectorProps {
