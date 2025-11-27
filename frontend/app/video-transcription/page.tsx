@@ -14,68 +14,117 @@ export default function VideoTranscription() {
   const [audio_language, setAudioLanguage] = useState("auto")
   const [targetLanguage, setTargetLanguage] = useState("en")
   const [isTranscribing, setIsTranscribing] = useState(false)
+  const [isTranslating, setIsTranslating] = useState(false)
 
   const handleFileSelect = (files: File[]) => {
     if (files[0]) setVideoFile(files[0])
   }
- const NllbTranslate = async () =>{
-    const data = new FormData();
-    data.append("target_lan",targetLanguage);
 
-    try{
-      const response = await fetch("http://127.0.0.1:8000/translate/nllb/",{
-        method:"POST",
-        body:data,
-      });
-      if (!response.ok){
-        throw new Error("translation error");
-      }
-      const my_data = await response.json();
-      setTranscript(my_data.translate);
+  const NllbTranslate = async () => {
+    if (!transcript || transcript.trim().length === 0) {
+      alert("Error: Nothing to translate");
+      return;
     }
-      catch(error){
-      console.error(error);
-      setTranscript("Error :failed to tranlsate");
+
+    setIsTranslating(true);
+
+    const data = new FormData();
+    data.append("transcript", transcript);
+    data.append("source_lan", audio_language || "auto");
+    data.append("target_lan", targetLanguage);
+
+    try {
+      console.log("[TRANSLATE] Sending translation request...");
+      console.log(`[TRANSLATE] Source: ${audio_language}, Target: ${targetLanguage}`);
       
+      const response = await fetch("http://127.0.0.1:8000/translate/nllb/", {
+        method: "POST",
+        body: data,
+      });
+
+      console.log(`[TRANSLATE] Response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[TRANSLATE ERROR]", errorText);
+        throw new Error(`Translation error: ${response.status} - ${errorText}`);
+      }
+
+      const my_data = await response.json();
+      console.log("[TRANSLATE] Response:", my_data);
+
+      if (my_data.status === "success") {
+        setTranscript(my_data.translated || "");
+        console.log("[TRANSLATE] Translation successful");
+      } else {
+        console.error("Translation error:", my_data);
+        alert(`Error: ${my_data.message || "Failed to translate"}`);
+      }
+    } catch (error) {
+      console.error("[TRANSLATE ERROR]", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Failed to translate"}`);
+    } finally {
+      setIsTranslating(false);
     }
- };
+  };
 
   const handleTranscribe = async () => {
-    if (!videoFile) return
-    setIsTranscribing(true)
-    // Simulate transcription
+    if (!videoFile) return;
+    
+    setIsTranscribing(true);
+    setTranscript(""); // Clear previous transcript
+    
     const formData = new FormData();
-    formData.append("video_file",videoFile);
-    formData.append("source_lan",audio_language);
-    try{
-      const response = await fetch("http://127.0.0.1:8000/modules/video_transcribe/",{
-        method:"POST",
-      body :formData,
-    });
-    if (!response.ok){
-      throw new Error("transription failed");
-    }
-    const data = await response.json();
-    setTranscript(data.transcript);
-    }
-    catch(error){
-      console.error(error);
-      setTranscript("Error :failed to transcribe");
+    formData.append("video_file", videoFile);
+    formData.append("source_lan", audio_language);
+
+    try {
+      console.log("[TRANSCRIBE] Sending transcription request...");
+      console.log(`[TRANSCRIBE] File: ${videoFile.name}, Language: ${audio_language}`);
       
+      const response = await fetch("http://127.0.0.1:8000/modules/video_transcribe/", {
+        method: "POST",
+        body: formData,
+      });
+
+      console.log(`[TRANSCRIBE] Response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[TRANSCRIBE ERROR]", errorText);
+        throw new Error(`Transcription failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("[TRANSCRIBE] Response:", data);
+
+      if (data.status === "success") {
+        // Use only_transcript for plain text display
+        setTranscript(data.only_transcript || data.transcript || "");
+        console.log("[TRANSCRIBE] Transcription successful");
+      } else {
+        throw new Error(data.message || "Transcription failed");
+      }
+    } catch (error) {
+      console.error("[TRANSCRIBE ERROR]", error);
+      setTranscript(`Error: ${error instanceof Error ? error.message : "Failed to transcribe"}`);
+    } finally {
+      setIsTranscribing(false);
     }
-    setIsTranscribing(false);
-   
   };
 
   const downloadTranscript = (format: "txt" | "docx") => {
-    const element = document.createElement("a")
-    element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(transcript))
-    element.setAttribute("download", `transcript.${format === "txt" ? "txt" : "docx"}`)
-    element.style.display = "none"
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
-  }
+    if (!transcript) return;
+
+    const element = document.createElement("a");
+    const file = new Blob([transcript], { type: "text/plain" });
+    element.href = URL.createObjectURL(file);
+    element.download = `transcript.${format === "txt" ? "txt" : "docx"}`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    URL.revokeObjectURL(element.href);
+  };
 
   return (
     <div className="p-6 lg:p-12 max-w-6xl mx-auto space-y-8">
@@ -110,10 +159,16 @@ export default function VideoTranscription() {
       {/* Translation Section */}
       <SectionCard title="Translate Transcript" description="Convert to another language">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <LanguageSelector label="Audio Language" value={audio_language} onSelect={setAudioLanguage} />
           <LanguageSelector label="Target Language" value={targetLanguage} onSelect={setTargetLanguage} />
-          <LanguageSelector label ="Audio Language" value={audio_language} onSelect={setAudioLanguage}/>
         </div>
-        <Button className="w-full bg-primary hover:bg-primary/90" onClick={NllbTranslate} >Translate Transcript</Button>
+        <Button 
+          className="w-full bg-primary hover:bg-primary/90" 
+          onClick={NllbTranslate}
+          disabled={!transcript || isTranslating}
+        >
+          {isTranslating ? "Translating..." : "Translate Transcript"}
+        </Button>
       </SectionCard>
 
       {/* Action Buttons */}

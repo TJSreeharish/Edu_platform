@@ -11,48 +11,78 @@ import { SectionCard } from "@/components/shared/section-card"
 export default function DocumentTranslation() {
   const [documentFile, setDocumentFile] = useState<File | null>(null)
   const [sourceLanguage, setSourceLanguage] = useState("en")
-  const [targetLanguage, setTargetLanguage] = useState("es")
+  const [targetLanguage, setTargetLanguage] = useState("hi")
   const [originalText, setOriginalText] = useState("")
   const [translatedText, setTranslatedText] = useState("")
   const [isTranslating, setIsTranslating] = useState(false)
 
   const handleFileSelect = (files: File[]) => {
-    if (files[0]) {
+    if (files && files[0]) {
       setDocumentFile(files[0])
-      // Simulate loading document content
-      setOriginalText(
-        "Sample document content that would be extracted from the PDF or Word file. This is a demonstration of how the translation engine would process longer documents while maintaining formatting.",
-      )
+      setOriginalText("")
+      setTranslatedText("")
     }
   }
 
   const handleTranslate = async () => {
-    if (!originalText) return
+    if (!documentFile) return
     setIsTranslating(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setTranslatedText(
-      "Contenido de documento de ejemplo que se extraería del archivo PDF o Word. Esta es una demostración de cómo el motor de traducción procesaría documentos más largos manteniendo el formato.",
-    )
-    setIsTranslating(false)
+
+    const formData = new FormData()
+    formData.append("file", documentFile)
+    formData.append("source_language", sourceLanguage)
+    formData.append("target_language", targetLanguage)
+
+    try {
+      // IMPORTANT: frontend hits FastAPI container directly
+      const res = await fetch("http://localhost:8903/translate", {
+          method: "POST",
+          body: formData,
+        });
+
+
+      if (!res.ok) {
+        const err = await res.text()
+        throw new Error(err || "Translation failed")
+      }
+
+      const data = await res.json()
+      setOriginalText(data.original_text || "")
+      setTranslatedText(data.translated_text || "")
+    } catch (e) {
+      console.error("Translate error:", e)
+      alert("Translation failed: " + (e as Error).message)
+    } finally {
+      setIsTranslating(false)
+    }
+  }
+
+  const handleDownload = () => {
+    if (!translatedText) return
+    const blob = new Blob([translatedText], { type: "text/markdown;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `translation_${targetLanguage}.md`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
     <div className="p-6 lg:p-12 max-w-6xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold text-foreground mb-2">Document Translation</h1>
-        <p className="text-muted-foreground">Translate documents while preserving structure and formatting</p>
-      </div>
+      <h1 className="text-4xl font-bold">Document Translation</h1>
+      <p className="text-muted-foreground">
+        Translate files using NLLB-200 while preserving formatting
+      </p>
 
-      {/* Upload Section */}
       <SectionCard
         title="Upload Document"
-        description="Support for PDF, DOCX, and text files"
+        description="PDF, DOCX, TXT supported"
         icon={<FileText size={20} />}
       >
         <FileUploader accept=".pdf,.docx,.txt" onFileSelect={handleFileSelect} />
       </SectionCard>
 
-      {/* Language Selection */}
       {documentFile && (
         <SectionCard title="Language Settings">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -62,39 +92,31 @@ export default function DocumentTranslation() {
         </SectionCard>
       )}
 
-      {/* Content Panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <SectionCard title="Original Text" description="Source document content">
+        <SectionCard title="Original Text">
           <TextEditor
             value={originalText}
             onChange={setOriginalText}
-            placeholder="Document content will appear here..."
-            readOnly={!!documentFile}
+            readOnly
           />
         </SectionCard>
 
-        <SectionCard title="Translated Text" description="Translated content">
+        <SectionCard title="Translated Text">
           <TextEditor
             value={translatedText}
             onChange={setTranslatedText}
-            placeholder="Translation will appear here..."
             readOnly
           />
         </SectionCard>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-4">
-        <Button
-          onClick={handleTranslate}
-          disabled={!originalText || isTranslating}
-          className="flex-1 bg-accent hover:bg-accent/90"
-        >
+      <div className="flex gap-4">
+        <Button onClick={handleTranslate} disabled={!documentFile || isTranslating}>
           {isTranslating ? "Translating..." : "Translate Document"}
         </Button>
-        <Button variant="outline" disabled={!translatedText} className="flex-1 bg-transparent">
-          <Download size={18} />
-          Download Translation
+
+        <Button variant="outline" disabled={!translatedText} onClick={handleDownload}>
+          <Download size={18} /> Download Translation
         </Button>
       </div>
     </div>
