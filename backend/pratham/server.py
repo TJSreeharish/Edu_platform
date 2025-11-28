@@ -10,9 +10,7 @@ from langdetect import detect
 
 app = FastAPI()
 
-# ---------------------------------------------------
-# CORS
-# ---------------------------------------------------
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "*"],
