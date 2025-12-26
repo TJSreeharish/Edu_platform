@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Mic2, Play, Download } from "lucide-react"
+import { useState, useRef } from "react"
+import { Mic2, Play, Download, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LanguageSelector } from "@/components/shared/language-selector"
 import { AccentSelector } from "@/components/shared/accent-selector"
@@ -11,18 +11,71 @@ import { SectionCard } from "@/components/shared/section-card"
 
 export default function TextToSpeech() {
   const [inputText, setInputText] = useState("")
+  const [refText, setRefText] = useState("राजधानी दिल्ली में साहित्य के सितारों के महाकुंभ यानी साहित्य आजतक 2025 का आज आखिरी दिन है. इस कार्यक्रम का आयोजन दिल्ली के मेजर ध्यानचंद स्टेडियम में हो रहा है.")
   const [language, setLanguage] = useState("en")
   const [accent, setAccent] = useState("neutral")
   const [pitch, setPitch] = useState(1)
   const [speed, setSpeed] = useState(1)
   const [voiceType, setVoiceType] = useState("neutral")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [refAudio, setRefAudio] = useState(null)
+  const [refAudioName, setRefAudioName] = useState("")
+  const [generatedAudioUrl, setGeneratedAudioUrl] = useState(null)
+  
+  const fileInputRef = useRef(null)
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0]
+    if (file) {
+      setRefAudio(file)
+      setRefAudioName(file.name)
+    }
+  }
 
   const handleGenerate = async () => {
-    if (!inputText) return
+    if (!inputText || !refAudio) {
+      alert("Please provide both input text and reference audio")
+      return
+    }
+
     setIsGenerating(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsGenerating(false)
+    
+    try {
+      const formData = new FormData()
+      formData.append("text", inputText)
+      formData.append("ref_text", refText)
+      formData.append("ref_audio", refAudio, "audio.wav")
+
+      const response = await fetch("http://127.0.0.1:8000/modules/stt/", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (response.ok) {
+        const audioBlob = await response.blob()
+        const audioUrl = URL.createObjectURL(audioBlob)
+        setGeneratedAudioUrl(audioUrl)
+      } else {
+        alert("Failed to generate audio")
+      }
+    } catch (error) {
+      console.error("Error generating audio:", error)
+      alert("Error generating audio")
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDownload = () => {
+    if (generatedAudioUrl) {
+      const element = document.createElement("a")
+      element.setAttribute("href", generatedAudioUrl)
+      element.setAttribute("download", "generated_audio.wav")
+      element.style.display = "none"
+      document.body.appendChild(element)
+      element.click()
+      document.body.removeChild(element)
+    }
   }
 
   return (
@@ -31,6 +84,52 @@ export default function TextToSpeech() {
         <h1 className="text-4xl font-bold text-foreground mb-2">Text-to-Speech</h1>
         <p className="text-muted-foreground">Generate natural-sounding audio with Indian language accents</p>
       </div>
+
+      {/* Reference Text Section */}
+      <SectionCard
+        title="Reference Text"
+        description="Text for the reference audio (default provided)"
+        icon={<Mic2 size={20} />}
+      >
+        <TextEditor 
+          value={refText} 
+          onChange={setRefText} 
+          placeholder="Enter reference text..." 
+        />
+      </SectionCard>
+
+      {/* Reference Audio Section */}
+      <SectionCard
+        title="Reference Audio"
+        description="Upload audio for voice cloning"
+      >
+        <div className="space-y-4">
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="w-full"
+          >
+            <Upload size={18} />
+            Upload Audio
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          
+          {refAudioName && (
+            <div className="p-3 bg-muted rounded-lg border border-border">
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Selected: </span>
+                {refAudioName}
+              </p>
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       {/* Input Section */}
       <SectionCard
@@ -49,7 +148,11 @@ export default function TextToSpeech() {
 
           <div>
             <label className="text-sm font-medium text-foreground block mb-2">Voice Type</label>
-            <select className="w-full bg-input border border-border rounded-lg px-3 py-2 text-foreground">
+            <select 
+              className="w-full bg-input border border-border rounded-lg px-3 py-2 text-foreground"
+              value={voiceType}
+              onChange={(e) => setVoiceType(e.target.value)}
+            >
               <option value="neutral">Neutral</option>
               <option value="soft">Soft</option>
               <option value="hard">Hard</option>
@@ -97,31 +200,29 @@ export default function TextToSpeech() {
       </SectionCard>
 
       {/* Audio Player Section */}
-      <SectionCard title="Generated Audio">
-        <AudioWaveform
-          onDownload={() => {
-            const element = document.createElement("a")
-            element.setAttribute("href", "data:audio/mp3;base64,SUQz")
-            element.setAttribute("download", "audio.mp3")
-            element.style.display = "none"
-            document.body.appendChild(element)
-            element.click()
-            document.body.removeChild(element)
-          }}
-        />
-      </SectionCard>
+      {generatedAudioUrl && (
+        <SectionCard title="Generated Audio">
+          <AudioWaveform onDownload={handleDownload} />
+          <audio src={generatedAudioUrl} controls className="w-full mt-4" />
+        </SectionCard>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-4">
         <Button
           onClick={handleGenerate}
-          disabled={!inputText || isGenerating}
+          disabled={!inputText || !refAudio || isGenerating}
           className="flex-1 bg-accent hover:bg-accent/90"
         >
           <Play size={18} />
           {isGenerating ? "Generating..." : "Generate Speech"}
         </Button>
-        <Button variant="outline" className="flex-1 bg-transparent">
+        <Button 
+          variant="outline" 
+          className="flex-1 bg-transparent"
+          onClick={handleDownload}
+          disabled={!generatedAudioUrl}
+        >
           <Download size={18} />
           Download Audio
         </Button>
