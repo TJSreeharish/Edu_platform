@@ -46,8 +46,6 @@ export default function VideoTranscription() {
     setIsTranslating(true)
 
     const data = new FormData()
-    data.append("text", transcript)
-    data.append("source_lan", audio_language)
     data.append("target_lan", target_lan)
 
     try {

@@ -1,6 +1,6 @@
 docker build -t translator_service .
 # You can change the port where to run 
-docker run -it --gpus all -p 8003:8003 translator_service
+docker run -it --gpus all -p 8005:8005 translator_service
 
 
 This is my Flow 

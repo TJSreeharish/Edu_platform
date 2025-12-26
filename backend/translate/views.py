@@ -1,36 +1,56 @@
 import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from modules.models import Transcript
 
-FASTAPI_TRANSLATE_URL = "http://127.0.0.1:8003/translate"  # No trailing slash
+FASTAPI_TRANSLATE_URL = "http://127.0.0.1:8903/translate"
 
-VALID_NLLB_CODES = ["eng_Latn", "hin_Deva", "kan_Knda", "tam_Taml", "tel_Telu", "mal_Mlym"]
-def index(request):
-    return JsonResponse({"message": "translate service alive"})
-@csrf_exempt
+@csrf_exempt 
 def nllb(request):
     if request.method != "POST":
-        return JsonResponse({"error": "POST only"}, status=400)
+        return JsonResponse({"error": "Only POST method allowed"}, status=405)
 
-    text = request.POST.get("text")
-    source_lan = request.POST.get("source_lan", "eng_Latn")
     target_lan = request.POST.get("target_lan")
-
-    if not text or not target_lan:
-        return JsonResponse({"error": "text and target_lan required"}, status=400)
-
-    if target_lan not in VALID_NLLB_CODES:
-        return JsonResponse({"error": f"Invalid target_lan: {target_lan}"}, status=400)
-
+    if not target_lan:
+        return JsonResponse({"error": "target_lan is required"}, status=400)
+    
     try:
-        data = {"text": text, "source_lan": source_lan, "target_lan": target_lan}
-        response = requests.post(FASTAPI_TRANSLATE_URL, json=data, timeout=400)
+        latest_transcript = Transcript.objects.latest()
+        
+        text = latest_transcript.transcript_text
+        source_lan = latest_transcript.source_lan
+        
+        payload = {
+            "text": text,
+            "source_lan": source_lan,
+            "target_lan": target_lan
+        }
+        response = requests.post(FASTAPI_TRANSLATE_URL, json=payload, timeout=300)
+        
+        if response.status_code == 200:
+            translation_data = response.json()
+            return JsonResponse({
+                "status": "success",
+                "translated": translation_data.get("translated_text"),
 
-        if response.status_code != 200:
-            return JsonResponse({"error": "FastAPI translation failed", "details": response.text}, status=500)
-
-        translated_text = response.json().get("translated_text")
-        return JsonResponse({"status": "success", "translated": translated_text})
-
+            })
+        else:
+            return JsonResponse({
+                "error": "Translation failed",
+                "details": response.json()
+            }, status=response.status_code)
+    
+    except Transcript.DoesNotExist:
+        return JsonResponse({"error": "No transcripts found"}, status=404)
+    
+    except requests.RequestException as e:
+        return JsonResponse({
+            "error": "Failed to connect to translation service",
+            "details": str(e)
+        }, status=503)
+    
     except Exception as e:
-        return JsonResponse({"error": "Server error", "details": str(e)}, status=500)
+        return JsonResponse({
+            "error": "Internal server error",
+            "details": str(e)
+        }, status=500)
