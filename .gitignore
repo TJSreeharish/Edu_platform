@@ -70,11 +70,23 @@ temp/
 # Backend (IMPORTANT)
 # ===============================
 
-# Ignore entire emotion model folder
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+# ===============================
+# Backend
+# ===============================
+
+# Ignore ONLY emotion model folder
 backend/context_engine/emotion_model/
 
 # Python cache
 __pycache__/
 *.pyc
 
-
+# Virtual environments
+venv/
