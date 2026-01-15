@@ -1,1 +1,17 @@
+# ===============================
+# Backend gitignore
+# ===============================
+
+# Python cache
 __pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.env
+
+# Logs
+*.log
+
+# Ignore ONLY emotion model folder
+context_engine/emotion_model/

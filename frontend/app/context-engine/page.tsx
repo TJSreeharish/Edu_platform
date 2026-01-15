@@ -1,125 +1,100 @@
 "use client"
 
 import { useState } from "react"
-import { Zap, Download } from "lucide-react"
+import { Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { LanguageSelector } from "@/components/shared/language-selector"
 import { TextEditor } from "@/components/shared/text-editor"
 import { SectionCard } from "@/components/shared/section-card"
-import { AccentSelector } from "@/components/shared/accent-selector"
-import { Checkbox } from "@/components/ui/checkbox"
+
+const EMOTION_API_URL = "http://localhost:9091/predict-emotion"
+
+// 🔹 Backend LABEL → Emotion mapping
+const LABEL_TO_EMOTION: Record<string, string> = {
+  LABEL_0: "angry",
+  LABEL_1: "happy",
+  LABEL_2: "neutral",
+  LABEL_3: "sad",
+}
 
 export default function ContextEngine() {
   const [inputText, setInputText] = useState("")
-  const [targetLanguage, setTargetLanguage] = useState("es")
-  const [outputText, setOutputText] = useState("")
-  const [selectedAccent, setSelectedAccent] = useState("neutral")
-  const [contextOptions, setContextOptions] = useState({
-    sentiment: true,
-    emotion: true,
-    tone: true,
-    accent: false,
-  })
-  const [isTranslating, setIsTranslating] = useState(false)
+  const [emotion, setEmotion] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleTranslate = async () => {
-    if (!inputText) return
-    setIsTranslating(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setOutputText(
-      "Context-aware translated text that preserves the original sentiment, emotional tone, and teaching style while adapting to the target language and accent requirements.",
-    )
-    setIsTranslating(false)
-  }
+  const analyzeEmotion = async () => {
+    if (!inputText.trim()) return
 
-  const toggleContext = (key: keyof typeof contextOptions) => {
-    setContextOptions((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }))
+    setLoading(true)
+    setEmotion(null)
+    setError(null)
+
+    try {
+      const res = await fetch(EMOTION_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: inputText }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Emotion API failed")
+      }
+
+      const data = await res.json()
+
+      // 🔹 Convert LABEL_x → readable emotion
+      const readableEmotion =
+        LABEL_TO_EMOTION[data.emotion] ?? data.emotion
+
+      setEmotion(readableEmotion)
+    } catch (err) {
+      setError("Backend error. Is FastAPI running on port 9091?")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="p-6 lg:p-12 max-w-6xl mx-auto space-y-8">
+    <div className="p-6 lg:p-12 max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-4xl font-bold text-foreground mb-2">Context-Aware Translation</h1>
-        <p className="text-muted-foreground">Preserve sentiment, emotion, and tone in your translations</p>
+        <h1 className="text-4xl font-bold mb-2">Emotion Analysis</h1>
+        <p className="text-muted-foreground">
+          Detect emotional tone using an offline deep learning model
+        </p>
       </div>
 
-      {/* Input Section */}
       <SectionCard
         title="Input Text"
-        description="Enter or paste the text you want to translate"
+        description="Enter text to analyze emotion"
         icon={<Zap size={20} />}
       >
-        <TextEditor value={inputText} onChange={setInputText} placeholder="Enter text to translate..." />
-      </SectionCard>
-
-      {/* Context Preservation Options */}
-      <SectionCard title="Context Preservation">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            {Object.entries({
-              sentiment: "Preserve Sentiment",
-              emotion: "Preserve Emotion",
-              tone: "Preserve Teaching Tone",
-            }).map(([key, label]) => (
-              <div key={key} className="flex items-center gap-3">
-                <Checkbox
-                  checked={contextOptions[key as keyof typeof contextOptions]}
-                  onCheckedChange={() => toggleContext(key as keyof typeof contextOptions)}
-                  className="border-border"
-                />
-                <label className="text-sm font-medium text-foreground cursor-pointer">{label}</label>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-4">
-            <LanguageSelector label="Target Language" value={targetLanguage} onSelect={setTargetLanguage} />
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={contextOptions.accent}
-                onCheckedChange={() => toggleContext("accent")}
-                className="border-border"
-              />
-              <label className="text-sm font-medium text-foreground cursor-pointer">Maintain Indian Accent</label>
-            </div>
-          </div>
-        </div>
-      </SectionCard>
-
-      {/* Accent Selection */}
-      {contextOptions.accent && (
-        <SectionCard title="Accent Settings">
-          <AccentSelector value={selectedAccent} onSelect={setSelectedAccent} label="Select Accent" />
-        </SectionCard>
-      )}
-
-      {/* Output Section */}
-      <SectionCard title="Translated Output" description="Context-preserved translation">
         <TextEditor
-          value={outputText}
-          onChange={setOutputText}
-          placeholder="Translation will appear here..."
-          readOnly
+          value={inputText}
+          onChange={setInputText}
+          placeholder="Type something emotional..."
         />
       </SectionCard>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-4">
-        <Button
-          onClick={handleTranslate}
-          disabled={!inputText || isTranslating}
-          className="flex-1 bg-accent hover:bg-accent/90"
-        >
-          {isTranslating ? "Translating..." : "Generate Context-Preserved Translation"}
-        </Button>
-        <Button disabled={!outputText} variant="outline" className="flex-1 bg-transparent">
-          <Download size={18} />
-          Download
-        </Button>
-      </div>
+      <Button
+        onClick={analyzeEmotion}
+        disabled={!inputText || loading}
+        className="w-full bg-accent"
+      >
+        {loading ? "Analyzing..." : "Analyze Emotion"}
+      </Button>
+
+      {emotion && (
+        <div className="text-lg font-semibold">
+          🧠 Detected Emotion:{" "}
+          <span className="text-accent capitalize">{emotion}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="text-red-500 text-sm">
+          ❌ {error}
+        </div>
+      )}
     </div>
   )
 }
