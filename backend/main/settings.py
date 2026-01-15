@@ -33,6 +33,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "modules",
     "translate",
+    "mathocr",
     "corsheaders",
     'django.contrib.admin',
     'django.contrib.auth',
