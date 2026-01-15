@@ -3,12 +3,16 @@ syntax = "proto3";
 package media;
 
 service MediaService {
-  rpc ExtractAudio(VideoRequest) returns (AudioResponse);
+
+  rpc ExtractAudio(stream VideoChunk) returns (AudioResponse);
   rpc HealthCheck(Empty) returns (HealthStatus);
 }
+
 message Empty {}
-message VideoRequest {
-  bytes video_data = 1;
+
+
+message VideoChunk {
+  bytes data = 1;
 }
 
 message AudioResponse {
@@ -16,5 +20,5 @@ message AudioResponse {
 }
 
 message HealthStatus {
-    string status = 1;
+  string status = 1;
 }

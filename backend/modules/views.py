@@ -53,7 +53,7 @@ def video_transcribe(request):
         
 
         print("Sending to STT service")
-        response = requests.post(audio_to_trans, files=files, data=data, timeout=300)
+        response = requests.post(audio_to_trans, files=files, data=data, timeout=3000)
         
         
         if response.status_code != 200:
@@ -123,6 +123,6 @@ def stt(request):
             "text": text
         }
         print("Sending to TTS service")
-        response = requests.post(speech_to_text, files=files, data=data, timeout=30000)
+        response = requests.post(speech_to_text, files=files, data=data, timeout=100000)
         return HttpResponse( response.content, content_type="audio/wav")
     return JsonResponse({"error": "TTS service failed"}, status=500)

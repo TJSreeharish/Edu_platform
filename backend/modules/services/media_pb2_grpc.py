@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import modules.services.media_pb2 as media__pb2
+from . import media_pb2 as media__pb2
 
 GRPC_GENERATED_VERSION = '1.76.0'
 GRPC_VERSION = grpc.__version__
@@ -34,9 +34,9 @@ class MediaServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.ExtractAudio = channel.unary_unary(
+        self.ExtractAudio = channel.stream_unary(
                 '/media.MediaService/ExtractAudio',
-                request_serializer=media__pb2.VideoRequest.SerializeToString,
+                request_serializer=media__pb2.VideoChunk.SerializeToString,
                 response_deserializer=media__pb2.AudioResponse.FromString,
                 _registered_method=True)
         self.HealthCheck = channel.unary_unary(
@@ -49,7 +49,7 @@ class MediaServiceStub(object):
 class MediaServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def ExtractAudio(self, request, context):
+    def ExtractAudio(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -64,9 +64,9 @@ class MediaServiceServicer(object):
 
 def add_MediaServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'ExtractAudio': grpc.unary_unary_rpc_method_handler(
+            'ExtractAudio': grpc.stream_unary_rpc_method_handler(
                     servicer.ExtractAudio,
-                    request_deserializer=media__pb2.VideoRequest.FromString,
+                    request_deserializer=media__pb2.VideoChunk.FromString,
                     response_serializer=media__pb2.AudioResponse.SerializeToString,
             ),
             'HealthCheck': grpc.unary_unary_rpc_method_handler(
@@ -86,7 +86,7 @@ class MediaService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def ExtractAudio(request,
+    def ExtractAudio(request_iterator,
             target,
             options=(),
             channel_credentials=None,
@@ -96,11 +96,11 @@ class MediaService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
+        return grpc.experimental.stream_unary(
+            request_iterator,
             target,
             '/media.MediaService/ExtractAudio',
-            media__pb2.VideoRequest.SerializeToString,
+            media__pb2.VideoChunk.SerializeToString,
             media__pb2.AudioResponse.FromString,
             options,
             channel_credentials,
