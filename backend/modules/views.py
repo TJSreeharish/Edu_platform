@@ -123,6 +123,6 @@ def stt(request):
             "text": text
         }
         print("Sending to TTS service")
-        response = requests.post(speech_to_text, files=files, data=data, timeout=300)
+        response = requests.post(speech_to_text, files=files, data=data, timeout=30000)
         return HttpResponse( response.content, content_type="audio/wav")
     return JsonResponse({"error": "TTS service failed"}, status=500)
