@@ -19,7 +19,9 @@ from django.urls import path,include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('modules/', include('document_summary.urls')),
     path('modules/',include('modules.urls')),    
     path('translate/',include('translate.urls')),
     path('mathocr/',include('mathocr.urls')),
+    path('modules/', include('modules.urls')),
 ]

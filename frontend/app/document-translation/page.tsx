@@ -35,11 +35,10 @@ export default function DocumentTranslation() {
 
     try {
       // IMPORTANT: frontend hits FastAPI container directly
-      const res = await fetch("http://localhost:8903/translate", {
-          method: "POST",
-          body: formData,
-        });
-
+      const res = await fetch("http://localhost:8000/translate/document/", {
+        method: "POST",
+        body: formData,
+      })
 
       if (!res.ok) {
         const err = await res.text()

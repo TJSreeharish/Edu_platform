@@ -1,13 +1,14 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Navbar } from "@/components/layout/navbar"
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+// Load fonts
+const geist = Geist({ subsets: ["latin"], weight: ["400", "700"] })
+const geistMono = Geist_Mono({ subsets: ["latin"], weight: ["400"] })
 
 export const metadata: Metadata = {
   title: "EduFlow - Educational Platform",
@@ -23,18 +24,29 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased bg-background text-foreground`}>
+      <body
+        className={`${geist.className} ${geistMono.className} font-sans antialiased bg-background text-foreground`}
+      >
         <div className="flex h-screen flex-col">
+          {/* Navbar at the top */}
           <Navbar />
-          <Sidebar />
-          <main className="flex-1 overflow-auto">{children}</main>
+
+          <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar */}
+            <Sidebar />
+
+            {/* Main content */}
+            <main className="flex-1 overflow-auto p-4">{children}</main>
+          </div>
+
+          {/* Analytics */}
+          <Analytics />
         </div>
-        <Analytics />
       </body>
     </html>
   )

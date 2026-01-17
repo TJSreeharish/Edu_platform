@@ -1,37 +1,76 @@
 "use client"
 
 import { useState } from "react"
-import { Upload, Download, Copy } from "lucide-react"
+import { Upload, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FileUploader } from "@/components/shared/file-uploader"
 import { LanguageSelector } from "@/components/shared/language-selector"
 import { TextEditor } from "@/components/shared/text-editor"
 import { SectionCard } from "@/components/shared/section-card"
 
-// If we want more we will add
+// Only allowed languages for NLLB translation
 const LANG_MAP: Record<string, string> = {
-  en: "eng_Latn",
-  hi: "hin_Deva",
-  kn: "kan_Knda",
-  ta: "tam_Taml",
-  te: "tel_Telu",
-  ml: "mal_Mlym",
-  // Add more as needed
-};
+  en: "en",
+  hi: "hi",
+  kn: "kn",
+  ta: "ta",
+  te: "te",
+  ml: "ml",
+  bn: "bn",
+}
 
 export default function VideoTranscription() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [transcript, setTranscript] = useState("")
-  const [audio_language, setAudioLanguage] = useState("auto")
-  const [targetLanguage, setTargetLanguage] = useState("en")
+  const [audioLanguage, setAudioLanguage] = useState("auto") // auto for STT
+  const [targetLanguage, setTargetLanguage] = useState("hi")
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [isTranslating, setIsTranslating] = useState(false)
 
+  // -----------------------
+  // Handle video selection
+  // -----------------------
   const handleFileSelect = (files: File[]) => {
     if (files[0]) setVideoFile(files[0])
   }
 
-  const NllbTranslate = async () => {
+  // -----------------------
+  // Transcribe video
+  // -----------------------
+  const handleTranscribe = async () => {
+    if (!videoFile) return
+    setIsTranscribing(true)
+    setTranscript("")
+
+    const formData = new FormData()
+    formData.append("video_file", videoFile)
+    formData.append("source_lan", audioLanguage) // "auto"
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/modules/video_transcribe/",
+        { method: "POST", body: formData }
+      )
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Transcription failed: ${response.status} - ${errorText}`)
+      }
+
+      const data = await response.json()
+      setTranscript(data.only_transcript || data.transcript || "")
+    } catch (error) {
+      console.error(error)
+      setTranscript(`Error: ${error instanceof Error ? error.message : "Failed to transcribe"}`)
+    } finally {
+      setIsTranscribing(false)
+    }
+  }
+
+  // -----------------------
+  // Translate transcript
+  // -----------------------
+  const handleTranslate = async () => {
     if (!transcript.trim()) {
       alert("Nothing to translate")
       return
@@ -55,54 +94,29 @@ export default function VideoTranscription() {
       })
 
       if (!response.ok) {
-        throw new Error("Translation failed")
+        const text = await response.text()
+        throw new Error(text || "Translation failed")
       }
 
       const res = await response.json()
+
       if (res.status === "success") {
-        setTranscript(res.translated)
+        // ✅ Use translated_text from backend
+        setTranscript(res.translated_text || "")
       } else {
         alert("Translation error: " + (res.error || "unknown"))
       }
     } catch (err) {
-      alert("Translation failed")
       console.error(err)
+      alert("Translation failed: " + (err instanceof Error ? err.message : "Unknown error"))
     } finally {
       setIsTranslating(false)
     }
   }
 
-  // Transcription remains unchanged
-  const handleTranscribe = async () => {
-    if (!videoFile) return
-    setIsTranscribing(true)
-    setTranscript("")
-
-    const formData = new FormData()
-    formData.append("video_file", videoFile)
-    formData.append("source_lan", audio_language)
-
-    try {
-      const response = await fetch("http://127.0.0.1:8000/modules/video_transcribe/", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Transcription failed: ${response.status} - ${errorText}`)
-      }
-
-      const data = await response.json()
-      setTranscript(data.only_transcript || data.transcript || "")
-    } catch (error) {
-      console.error(error)
-      setTranscript(`Error: ${error instanceof Error ? error.message : "Failed to transcribe"}`)
-    } finally {
-      setIsTranscribing(false)
-    }
-  }
-
+  // -----------------------
+  // Download transcript
+  // -----------------------
   const downloadTranscript = (format: "txt" | "docx") => {
     if (!transcript) return
     const element = document.createElement("a")
@@ -131,9 +145,9 @@ export default function VideoTranscription() {
       </div>
 
       <SectionCard title="Translate Transcript">
-        <LanguageSelector label="Audio Language" value={audio_language} onSelect={setAudioLanguage} />
+        <LanguageSelector label="Audio Language" value={audioLanguage} onSelect={setAudioLanguage} />
         <LanguageSelector label="Target Language" value={targetLanguage} onSelect={setTargetLanguage} />
-        <Button onClick={NllbTranslate} disabled={!transcript || isTranslating}>
+        <Button onClick={handleTranslate} disabled={!transcript || isTranslating}>
           {isTranslating ? "Translating..." : "Translate Transcript"}
         </Button>
       </SectionCard>

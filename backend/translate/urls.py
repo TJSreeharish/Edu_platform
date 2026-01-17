@@ -1,6 +1,7 @@
 from django.urls import path
-from . import views
+from .views import nllb, document_translate
 
 urlpatterns = [
-    path('nllb/', views.nllb),
+    path("nllb/", nllb),
+    path("document/", document_translate),
 ]
