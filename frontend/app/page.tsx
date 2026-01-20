@@ -52,7 +52,7 @@ const modules = [
     description: "Extract, convert, and visualize mathematical equations",
     icon: Calculator,
     color: "from-emerald-500 to-emerald-600",
-    href: "/math-visualizer",
+    href: "/mathcompute",
   },
   {
     id: "summarizer",

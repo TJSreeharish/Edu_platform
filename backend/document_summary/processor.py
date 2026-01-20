@@ -17,7 +17,7 @@ for pkg in NLTK_PACKAGES:
         nltk.download(pkg, quiet=True)
 
 # ====================== MODEL SETUP ======================
-MODEL_PATH = "C:/Users/prath/Downloads/secret1/ml_models/pegasus"
+MODEL_PATH = ""
 
 tokenizer = PegasusTokenizer.from_pretrained(
     MODEL_PATH,

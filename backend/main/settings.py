@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "modules",
     "translate",
     "mathocr",
+    "mathcompute",
     "corsheaders",
     'django.contrib.admin',
     'django.contrib.auth',

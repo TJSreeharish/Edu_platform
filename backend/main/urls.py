@@ -24,4 +24,6 @@ urlpatterns = [
     path('translate/',include('translate.urls')),
     path('mathocr/',include('mathocr.urls')),
     path('modules/', include('modules.urls')),
+    path('mathcompute/',include('mathcompute.urls')),
+    
 ]
