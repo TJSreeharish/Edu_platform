@@ -47,7 +47,7 @@ const modules = [
     href: "/tts",
   },
   {
-    id: "math-visualizer",
+    id: "mathcompute",
     title: "Math Visualization",
     description: "Extract, convert, and visualize mathematical equations",
     icon: Calculator,

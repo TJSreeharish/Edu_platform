@@ -46,7 +46,7 @@ export default function TextToSpeech() {
       formData.append("ref_text", refText)
       formData.append("ref_audio", refAudio, "audio.wav")
 
-      const response = await fetch("http://127.0.0.1:8000/modules/stt/", {
+      const response = await fetch("http://172.16.2.131:8000/modules/stt/", {
         method: "POST",
         body: formData,
       })

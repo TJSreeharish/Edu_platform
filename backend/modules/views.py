@@ -7,8 +7,8 @@ import requests
 import traceback
 import uuid
 
-audio_to_trans = "http://127.0.0.1:8003/process_audio/"
-speech_to_text = "http://127.0.0.1:8005/generate/"
+audio_to_trans = "http://172.16.2.131:8003/process_audio/"
+speech_to_text = "http://172.16.2.131:8005/generate/"
 
 def index(request):
     return JsonResponse({"message": "success"})

@@ -3,28 +3,22 @@ import os
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from schemas import EmotionRequest, EmotionResponse
 
-# ---------- PATH ----------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "emotion_model")
-
-if not os.path.exists(MODEL_PATH):
-    raise RuntimeError(f"Emotion model not found at {MODEL_PATH}")
+# ---------- MODEL CONFIG ----------
+MODEL_NAME = "j-hartmann/emotion-english-distilroberta-base"  # Change to your preferred model
 
 # ---------- DEVICE ----------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# ---------- LOAD TOKENIZER ----------
+# ---------- DOWNLOAD & LOAD TOKENIZER ----------
 tokenizer = AutoTokenizer.from_pretrained(
-    MODEL_PATH,
-    use_fast=False,
-    local_files_only=True
+    MODEL_NAME,
+    use_fast=False
 )
 
-# ---------- LOAD MODEL ----------
+# ---------- DOWNLOAD & LOAD MODEL ----------
 model = AutoModelForSequenceClassification.from_pretrained(
-    MODEL_PATH,
-    torch_dtype=torch.float32,
-    local_files_only=True
+    MODEL_NAME,
+    torch_dtype=torch.float32
 )
 
 model.to(device)

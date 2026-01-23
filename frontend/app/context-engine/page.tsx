@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { TextEditor } from "@/components/shared/text-editor"
 import { SectionCard } from "@/components/shared/section-card"
 
-const EMOTION_API_URL = "http://localhost:9091/predict-emotion"
+const EMOTION_API_URL = "http://172.16.2.131:9091/predict-emotion"
 
 // 🔹 Backend LABEL → Emotion mapping
 const LABEL_TO_EMOTION: Record<string, string> = {

@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 import requests
 import re
 
-DOCKER_URL = "http://127.0.0.1:8006"
+DOCKER_URL = "http://172.16.2.131:8006"
 
 def clean_latex(text):
     if not text:
